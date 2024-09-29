@@ -1,0 +1,16 @@
+name: Audit
+on:
+  schedule:
+    - cron: "0 2 1 * *"
+  push:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+jobs:
+  vulnerabilities:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: taiki-e/install-action@cargo-deny
+      - name: vulnerabilities
+        run: cargo deny check advisories
