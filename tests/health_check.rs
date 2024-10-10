@@ -8,7 +8,7 @@ use zero2prod::config::{self, DatabaseSettings};
 #[actix_web::test]
 async fn health_check() {
     let test_app = spawn_app().await;
-    // We need to bring in `reqwest` 
+    // We need to bring in `reqwest`
     // to perform HTTP requests against our application.
     let client = reqwest::Client::new();
 
@@ -23,7 +23,6 @@ async fn health_check() {
     assert!(response.status().is_success());
     assert_eq!(Some(0), response.content_length());
 }
-
 
 #[actix_web::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
@@ -58,11 +57,11 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
     // Arrange
     let test_app = spawn_app().await;
     let client = reqwest::Client::new();
-    
+
     let test_cases = vec![
         ("name=mc%20kenzie", "missing the email"),
         ("email=katie_mc_kenzie%40gmail.com", "missing the name"),
-        ("", "missing both name and email")
+        ("", "missing both name and email"),
     ];
 
     for (invalid_body, error_message) in test_cases {
@@ -88,7 +87,7 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
 
 pub struct TestApp {
     address: String,
-    db_connection_pool: PgPool
+    db_connection_pool: PgPool,
 }
 
 // Launch our application in the background
@@ -102,12 +101,13 @@ async fn spawn_app() -> TestApp {
 
     let db_connection_pool = configure_database(&config.database).await;
 
-    let server = zero2prod::startup::run(listener, db_connection_pool.clone()).expect("Failed to bind address");
+    let server = zero2prod::startup::run(listener, db_connection_pool.clone())
+        .expect("Failed to bind address");
     let _ = spawn(server);
 
     TestApp {
         address: format!("http://127.0.0.1:{}", port),
-        db_connection_pool
+        db_connection_pool,
     }
 }
 

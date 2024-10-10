@@ -1,4 +1,3 @@
-
 #[derive(serde::Deserialize)]
 pub struct DatabaseSettings {
     pub username: String,
@@ -27,14 +26,16 @@ impl DatabaseSettings {
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
-    pub application_port: u16
+    pub application_port: u16,
 }
 
 pub fn get_config() -> Result<Settings, config::ConfigError> {
     let config_builder = config::Config::builder();
 
     // Reads values from project root level file named "config" that `config` lib knows how to parse: yaml, json, etc.
-    let config = config_builder.add_source(config::File::with_name("config")).build()?;
-    
+    let config = config_builder
+        .add_source(config::File::with_name("config"))
+        .build()?;
+
     config.try_deserialize::<Settings>()
 }
