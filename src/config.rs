@@ -1,9 +1,12 @@
 use secrecy::{ExposeSecret, SecretString};
+use serde_aux::field_attributes::deserialize_number_from_string;
 
 #[derive(serde::Deserialize)]
 pub struct DatabaseSettings {
     pub username: String,
     pub password: SecretString,
+    // to ensure that value passed through config (string) is correctly parsed as an integer
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
     pub database_name: String,
@@ -28,6 +31,7 @@ impl DatabaseSettings {
 #[derive(serde::Deserialize)]
 pub struct ApplicationSettings {
     pub host: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
 }
 
@@ -66,9 +70,10 @@ pub fn get_config() -> Result<Settings, config::ConfigError> {
         .try_into()
         .expect("Failed to read APP_ENVIRONMENT environment variable");
 
-    // layer on the eenvironment-specific values
+    // layer on the environment-specific values
     let config = config_builder
-        .add_source(config::File::from(config_dir.join(environment.as_str())).required(true));
+        .add_source(config::File::from(config_dir.join(environment.as_str())).required(true))
+        .add_source(config::Environment::with_prefix("app").separator("__")); // e.g. APP_APPLICATION__PORT will set `Settings.application.port`
 
     match config.build() {
         Ok(config) => config.try_deserialize::<Settings>(),

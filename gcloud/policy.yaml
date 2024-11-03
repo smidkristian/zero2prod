@@ -1,5 +1,0 @@
-# allow public access
-bindings:
-  - members:
-      - allUsers
-    role: roles/run.invoker
