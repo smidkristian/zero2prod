@@ -1,5 +1,7 @@
 use secrecy::{ExposeSecret, SecretString};
 use serde_aux::field_attributes::deserialize_number_from_string;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use sqlx::ConnectOptions;
 
 #[derive(serde::Deserialize)]
 pub struct DatabaseSettings {
@@ -10,21 +12,29 @@ pub struct DatabaseSettings {
     pub port: u16,
     pub host: String,
     pub database_name: String,
+    pub require_ssl: bool,
 }
 
 impl DatabaseSettings {
-    pub fn get_connection_string(&self) -> SecretString {
-        SecretString::new(format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username, self.password.expose_secret(), self.host, self.port, self.database_name
-        ).into())
+    pub fn with_db(&self) -> PgConnectOptions {
+        let mut options = self.without_db().database(&self.database_name);
+        options = options.log_statements(tracing::log::LevelFilter::Trace);
+        options
     }
 
-    pub fn get_connection_string_without_db(&self) -> SecretString {
-        SecretString::new(format!(
-            "postgres://{}:{}@{}:{}",
-            self.username, self.password.expose_secret(), self.host, self.port
-        ).into())
+    pub fn without_db(&self) -> PgConnectOptions {
+        let ssl_mode = if self.require_ssl {
+            PgSslMode::Require 
+        } else {
+            PgSslMode::Prefer
+        };
+
+        PgConnectOptions::new()
+            .username(&self.username)
+            .password(self.password.expose_secret())
+            .host(&self.host)
+            .port(self.port)
+            .ssl_mode(ssl_mode)
     }
 }
 
@@ -73,7 +83,7 @@ pub fn get_config() -> Result<Settings, config::ConfigError> {
     // layer on the environment-specific values
     let config = config_builder
         .add_source(config::File::from(config_dir.join(environment.as_str())).required(true))
-        .add_source(config::Environment::with_prefix("app").separator("__")); // e.g. APP_APPLICATION__PORT will set `Settings.application.port`
+        .add_source(config::Environment::with_prefix("APP").separator("__")); // e.g. APP_APPLICATION__PORT will set `Settings.application.port`
 
     match config.build() {
         Ok(config) => config.try_deserialize::<Settings>(),

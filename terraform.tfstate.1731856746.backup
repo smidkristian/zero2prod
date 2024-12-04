@@ -1,0 +1,89 @@
+{
+  "version": 4,
+  "terraform_version": "1.5.7",
+  "serial": 18,
+  "lineage": "ffa8a1f1-7cb9-a479-b656-749f47ed8cfb",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "data",
+      "type": "google_secret_manager_secret_version",
+      "name": "db_password",
+      "provider": "provider[\"registry.terraform.io/hashicorp/google\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "create_time": "2024-11-03T16:50:58.227347Z",
+            "destroy_time": null,
+            "enabled": true,
+            "id": "projects/812676081674/secrets/DB_PASSWORD/versions/1",
+            "name": "projects/812676081674/secrets/DB_PASSWORD/versions/1",
+            "project": "zero2prod-473829",
+            "secret": "DB_PASSWORD",
+            "secret_data": "password",
+            "version": "1"
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "google_cloud_run_service",
+      "name": "zero2prod_app",
+      "provider": "provider[\"registry.terraform.io/hashicorp/google\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "google_cloud_run_service_iam_binding",
+      "name": "noauth",
+      "provider": "provider[\"registry.terraform.io/hashicorp/google\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "google_cloud_run_service_iam_policy",
+      "name": "noauth",
+      "provider": "provider[\"registry.terraform.io/hashicorp/google\"]",
+      "instances": [
+        {
+          "status": "tainted",
+          "schema_version": 0,
+          "attributes": {
+            "etag": "BwYnCmsJrE0=",
+            "id": "v1/projects/zero2prod-473829/locations/europe-west3/services/zero2prod-app",
+            "location": "europe-west3",
+            "policy_data": "{}",
+            "project": "zero2prod-473829",
+            "service": "v1/projects/zero2prod-473829/locations/europe-west3/services/zero2prod-app"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "data.google_secret_manager_secret_version.db_password",
+            "google_cloud_run_service.zero2prod_app",
+            "google_sql_database_instance.zero2prod_db",
+            "google_sql_user.default_sql_user"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "google_sql_database_instance",
+      "name": "zero2prod_db",
+      "provider": "provider[\"registry.terraform.io/hashicorp/google\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "google_sql_user",
+      "name": "default_sql_user",
+      "provider": "provider[\"registry.terraform.io/hashicorp/google\"]",
+      "instances": []
+    }
+  ],
+  "check_results": null
+}
