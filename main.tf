@@ -14,9 +14,10 @@ provider "google" {
 
 # Cloud SQL PostgreSQL instance
 resource "google_sql_database_instance" "zero2prod_db" {
-  name             = "zero2prod-db"
-  database_version = "POSTGRES_14"
-  region           = "europe-west3"
+  name                = "zero2prod-db"
+  database_version    = "POSTGRES_14"
+  region              = "europe-west3"
+  deletion_protection = false
 
   settings {
     tier              = "db-g1-small"
@@ -137,6 +138,12 @@ resource "google_cloud_run_service_iam_binding" "noauth" {
   ]
 }
 
+# Assign the Cloud SQL Client role to the service account
+resource "google_project_iam_member" "cloud_sql_client_role" {
+  project = "zero2prod-473829"
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${var.service_account_email}"
+}
 
 # Get DB password from Secret Manager
 data "google_secret_manager_secret_version" "db_password" {

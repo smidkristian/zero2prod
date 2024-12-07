@@ -1,3 +1,6 @@
 /target
 /gcloud/key.json
 .DS_Store
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars

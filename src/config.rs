@@ -29,12 +29,23 @@ impl DatabaseSettings {
             PgSslMode::Prefer
         };
 
-        PgConnectOptions::new()
-            .username(&self.username)
-            .password(self.password.expose_secret())
-            .host(&self.host)
-            .port(self.port)
-            .ssl_mode(ssl_mode)
+        // general solution 
+        // PgConnectOptions::new()
+        //     .username(&self.username)
+        //     .password(self.password.expose_secret())
+        //     .host(&self.host)
+        //     .port(self.port)
+        //     .ssl_mode(ssl_mode)
+
+        // google cloud sql
+        let url = format!(
+            "postgres:///?host={}&port={}&user={}&password={}",
+            self.host, self.port, self.username, self.password.expose_secret()
+        );
+
+        println!("Database URL: {:?}", url.parse::<PgConnectOptions>());
+
+        url.parse::<PgConnectOptions>().expect("Couldn't parse database URL").ssl_mode(ssl_mode)
     }
 }
 
