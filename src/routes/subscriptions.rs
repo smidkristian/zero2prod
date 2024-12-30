@@ -1,7 +1,6 @@
 use actix_web::{post, web, HttpResponse};
 use chrono::Utc;
-use sqlx::PgPool;
-use uuid::Uuid;
+use mongodb::{bson::doc, results::InsertOneResult, Database};
 
 #[derive(serde::Deserialize)]
 struct FormData {
@@ -9,47 +8,34 @@ struct FormData {
     name: String,
 }
 
-#[tracing::instrument(
-    name = "Saving new subscriber details in the database",
-    skip(form, db_connection_pool)
-)]
-async fn insert_subscriber(form: &FormData, db_connection_pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        r#"
-        INSERT INTO subscriptions (id, email, name, subscribed_at)
-        VALUES ($1, $2, $3, $4)
-        "#,
-        Uuid::new_v4(),
-        form.email,
-        form.name,
-        Utc::now()
-    )
-    // we use `get_ref` to get an immutable reference to the `PgPool` wrapped by `web::Data`
-    .execute(db_connection_pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        e
-    })?;
+#[tracing::instrument(name = "Saving new subscriber details in the database", skip(form, db))]
+async fn insert_subscriber(
+    form: &FormData,
+    db: &Database,
+) -> Result<InsertOneResult, mongodb::error::Error> {
+    let collection = db.collection("subscriptions");
 
-    Ok(())
+    let new_subscriber = doc! {
+        "email": &form.email,
+        "name": &form.name,
+        "timestamp": Utc::now().to_string()
+    };
+
+    collection.insert_one(new_subscriber, None).await
 }
 
 #[post("/subscriptions")]
 #[tracing::instrument(
     name ="Adding a new subscriber",
-    skip(form, db_connection_pool),
+    skip(form, db),
     fields(
         subscriber_email = %form.email,
         subscriber_name = %form.name
     )
 )]
-async fn subscribe(
-    form: web::Form<FormData>,
-    db_connection_pool: web::Data<PgPool>,
-) -> HttpResponse {
-    match insert_subscriber(&form, &db_connection_pool).await {
+async fn subscribe(form: web::Form<FormData>, db: web::Data<Database>) -> HttpResponse {
+    match insert_subscriber(&form, &db).await {
         Ok(_) => HttpResponse::Ok().finish(),
-        Err(_e) => HttpResponse::InternalServerError().finish()
+        Err(_e) => HttpResponse::InternalServerError().finish(),
     }
 }

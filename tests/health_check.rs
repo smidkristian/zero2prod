@@ -1,10 +1,14 @@
 use std::net::TcpListener;
 
 use actix_web::rt::spawn;
+use mongodb::{bson::doc, options::ClientOptions, Client, Database};
 use once_cell::sync::Lazy;
-use sqlx::{Connection, Executor, PgConnection, PgPool};
+use serde::Deserialize;
 use uuid::Uuid;
-use zero2prod::{config::{self, DatabaseSettings}, telemetry::{get_subscriber, init_subscriber}};
+use zero2prod::{
+    config::{self, DatabaseSettings},
+    telemetry::{get_subscriber, init_subscriber},
+};
 
 #[actix_web::test]
 async fn health_check() {
@@ -22,6 +26,12 @@ async fn health_check() {
     // assert
     assert!(response.status().is_success());
     assert_eq!(Some(0), response.content_length());
+}
+
+#[derive(Deserialize)]
+struct Subscriber {
+    email: String,
+    name: String,
 }
 
 #[actix_web::test]
@@ -43,10 +53,14 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     // assert
     assert_eq!(200, response.status().as_u16());
 
-    let saved = sqlx::query!("SELECT email, name FROM subscriptions")
-        .fetch_one(&test_app.db_connection_pool)
+    let filter = doc! { "email": "katie_mc_kenzie@gmail.com" };
+    let saved: Subscriber = test_app
+        .db
+        .collection("subscriptions")
+        .find_one(filter, None)
         .await
-        .expect("Failed to fetch saved subscription");
+        .expect("Failed to fetch saved subscription")
+        .expect("No document found");
 
     assert_eq!(saved.email, "katie_mc_kenzie@gmail.com");
     assert_eq!(saved.name, "mc kenzie");
@@ -104,7 +118,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 
 pub struct TestApp {
     address: String,
-    db_connection_pool: PgPool,
+    db: Database,
 }
 
 // launch our application in the background
@@ -118,37 +132,25 @@ async fn spawn_app() -> TestApp {
     // randomize database name so that each test has its own database
     config.database.database_name = Uuid::new_v4().to_string();
 
-    let db_connection_pool = configure_database(&config.database).await;
+    let database = configure_database(&config.database).await;
 
-    let server = zero2prod::startup::run(listener, db_connection_pool.clone())
-        .expect("Failed to bind address");
+    let server =
+        zero2prod::startup::run(listener, database.clone()).expect("Failed to bind address");
 
     spawn(server);
 
     TestApp {
         address: format!("http://127.0.0.1:{}", port),
-        db_connection_pool,
+        db: database,
     }
 }
 
-pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
-    let mut connection = PgConnection::connect_with(&config.without_db())
+pub async fn configure_database(config: &DatabaseSettings) -> Database {
+    let client_options = ClientOptions::parse(&config.uri)
         .await
-        .expect("Failed to connect to Postgres");
+        .expect("Failed to parse client options");
 
-    connection
-        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
-        .await
-        .expect("Failed to create database");
+    let client = Client::with_options(client_options).expect("Failed to create database client");
 
-    let connection_pool = PgPool::connect_with(config.with_db())
-        .await
-        .expect("Failed to connect to Postgres pool");
-
-    sqlx::migrate!("./migrations")
-        .run(&connection_pool)
-        .await
-        .expect("Failed to migrate database");
-
-    connection_pool
+    client.database(&config.database_name)
 }

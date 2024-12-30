@@ -13,47 +13,47 @@ provider "google" {
 }
 
 # Cloud SQL PostgreSQL instance
-resource "google_sql_database_instance" "zero2prod_db" {
-  name                = "zero2prod-db"
-  database_version    = "POSTGRES_14"
-  region              = "europe-west3"
-  deletion_protection = false
+# resource "google_sql_database_instance" "zero2prod_db" {
+#   name                = "zero2prod-db"
+#   database_version    = "POSTGRES_14"
+#   region              = "europe-west3"
+#   deletion_protection = false
 
-  settings {
-    tier              = "db-g1-small"
-    availability_type = "ZONAL"
+#   settings {
+#     tier              = "db-g1-small"
+#     availability_type = "ZONAL"
 
-    backup_configuration {
-      enabled                        = true
-      start_time                     = "01:00"
-      point_in_time_recovery_enabled = true
-    }
+#     backup_configuration {
+#       enabled                        = true
+#       start_time                     = "01:00"
+#       point_in_time_recovery_enabled = true
+#     }
 
-    maintenance_window {
-      day  = 7 # sunday
-      hour = 1
-    }
+#     maintenance_window {
+#       day  = 7 # sunday
+#       hour = 1
+#     }
 
-    disk_size       = 10
-    disk_type       = "PD_SSD"
-    disk_autoresize = false
-  }
+#     disk_size       = 10
+#     disk_type       = "PD_SSD"
+#     disk_autoresize = false
+#   }
 
-  root_password = data.google_secret_manager_secret_version.db_password.secret_data
-}
+#   root_password = data.google_secret_manager_secret_version.db_password.secret_data
+# }
 
 # Create a database user
-resource "google_sql_user" "default_sql_user" {
-  name     = "postgres"
-  instance = google_sql_database_instance.zero2prod_db.name
-  password = data.google_secret_manager_secret_version.db_password.secret_data
-}
+# resource "google_sql_user" "default_sql_user" {
+#   name     = "postgres"
+#   instance = google_sql_database_instance.zero2prod_db.name
+#   password = data.google_secret_manager_secret_version.db_password.secret_data
+# }
 
 # Create a default database
-resource "google_sql_database" "default_sql_database" {
-  name     = "newsletter"
-  instance = google_sql_database_instance.zero2prod_db.name
-}
+# resource "google_sql_database" "default_sql_database" {
+#   name     = "newsletter"
+#   instance = google_sql_database_instance.zero2prod_db.name
+# }
 
 # Cloud Run service
 resource "google_cloud_run_service" "zero2prod_app" {
@@ -89,23 +89,8 @@ resource "google_cloud_run_service" "zero2prod_app" {
         }
 
         env {
-          name  = "APP_DATABASE__USERNAME"
-          value = google_sql_user.default_sql_user.name
-        }
-
-        env {
-          name  = "APP_DATABASE__PASSWORD"
-          value = data.google_secret_manager_secret_version.db_password.secret_data
-        }
-
-        env {
-          name  = "APP_DATABASE__HOST"
-          value = google_sql_database_instance.zero2prod_db.connection_name
-        }
-
-        env {
-          name  = "APP_DATABASE__DATABASE_NAME"
-          value = google_sql_database.default_sql_database.name
+          name  = "APP_DATABASE__URI"
+          value = var.database_uri 
         }
 
         liveness_probe {
@@ -139,14 +124,14 @@ resource "google_cloud_run_service_iam_binding" "noauth" {
 }
 
 # Assign the Cloud SQL Client role to the service account
-resource "google_project_iam_member" "cloud_sql_client_role" {
-  project = "zero2prod-473829"
-  role    = "roles/cloudsql.client"
-  member  = "serviceAccount:${var.service_account_email}"
-}
+# resource "google_project_iam_member" "cloud_sql_client_role" {
+#   project = "zero2prod-473829"
+#   role    = "roles/cloudsql.client"
+#   member  = "serviceAccount:${var.service_account_email}"
+# }
 
 # Get DB password from Secret Manager
-data "google_secret_manager_secret_version" "db_password" {
-  secret  = "DB_PASSWORD"
-  version = "latest"
-}
+# data "google_secret_manager_secret_version" "db_password" {
+#   secret  = "DB_PASSWORD"
+#   version = "latest"
+# }
