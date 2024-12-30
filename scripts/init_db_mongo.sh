@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-DB_USERNAME=zero2prod
+DB_USERNAME=mongo
 DB_PASSWORD=password
 
 if [[ -z "${SKIP_DOCKER}" ]]; then
